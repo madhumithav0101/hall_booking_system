@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -256,3 +257,263 @@
 </script>
 </body>
 </html>
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Hall Booking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <div class="dashboard">
+    <a href="#mainContent" class="menu-btn">Booking</a>
+<a href="#availability-section" class="menu-btn">Availability</a>
+<a href="#booked-slots-section" class="menu-btn">Booked Slots</a>
+<a href="#cancel-section" class="menu-btn">Cancel Booking</a>
+</div>
+<a class="skip-link" href="#mainContent">Skip to main content</a>
+<header class="topbar">
+    <div>
+        <p class="eyebrow">Conference rooms</p>
+        <h1>Meeting Hall Booking</h1>
+    </div>
+    <a class="nav-link" href="{{ url_for('admin') }}">Admin</a>
+</header>
+
+<main class="page-shell" id="mainContent">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <section class="messages" role="status" aria-live="polite">
+                {% for category, message in messages %}
+                    <p class="message {{ category }}">{{ message }}</p>
+                {% endfor %}
+            </section>
+        {% endif %}
+    {% endwith %}
+
+    <section class="layout-grid">
+        <div class="panel">
+            <div class="panel-heading">
+                <h2>Book a Hall</h2>
+                <p>Choose your hall, date, timing, and contact details.</p>
+            </div>
+
+            <form name="bookingForm" action="{{ url_for('book') }}" method="POST" onsubmit="return validateForm()" aria-label="Meeting hall booking form">
+                <div class="field">
+                    <label for="name">Name</label>
+                    <input id="name" type="text" name="name" placeholder="Enter your name" autocomplete="name" required>
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="email">Email</label>
+                        <input id="email" type="email" name="email" placeholder="name@example.com" autocomplete="email" required>
+                    </div>
+                    <div class="field">
+                        <label for="phone">Phone</label>
+                        <input id="phone" type="tel" name="phone" placeholder="Phone number" inputmode="tel" autocomplete="tel" required>
+                    </div>
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="hall">Hall</label>
+                        <select id="hall" name="hall" required>
+                            <option value="">Select Hall</option>
+                            {% for hall in halls %}
+                                <option value="{{ hall }}" {% if selected_hall == hall %}selected{% endif %}>{{ hall }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="booking_date">Date</label>
+                        <input id="booking_date" type="date" name="booking_date" value="{{ selected_date }}" required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="slot">Timing</label>
+                    <select id="slot" name="slot" required>
+                        <option value="">Select timing</option>
+                        {% for slot in slots %}
+                            <option value="{{ slot }}">{{ slot }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label for="purpose">Purpose</label>
+                    <input id="purpose" type="text" name="purpose" placeholder="Team meeting, interview, review..." maxlength="255" required>
+                </div>
+
+                <button type="submit">Book Now</button>
+            </form>
+        </div>
+
+        <aside class="panel" id="availability-section"></aside>
+            <div class="panel-heading">
+                <h2>Availability</h2>
+                <p id="availabilityHint">Select hall and date to see slot status.</p>
+            </div>
+            <div class="slot-grid" id="slotGrid" aria-live="polite">
+                {% for slot in slots %}
+                    <span class="slot-pill">{{ slot }}</span>
+                {% endfor %}
+            </div>
+        </aside>
+    </section>
+
+   <section class="panel" id="booked-slots-section"></section>
+        <div class="panel-heading split-heading">
+            <div>
+                <h2>Booked Slots</h2>
+                <p>Filter bookings by date and hall before choosing a slot.</p>
+            </div>
+            <form class="filter-form" action="{{ url_for('home') }}" method="GET">
+                <input type="date" name="date" value="{{ selected_date }}">
+                <select name="hall">
+                    <option value="">All halls</option>
+                    {% for hall in halls %}
+                        <option value="{{ hall }}" {% if selected_hall == hall %}selected{% endif %}>{{ hall }}</option>
+                    {% endfor %}
+                </select>
+                <button class="secondary-button" type="submit">Filter</button>
+            </form>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <caption>Current meeting hall bookings</caption>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Hall</th>
+                        <th>Date</th>
+                        <th>Timing</th>
+                        <th>Name</th>
+                        <th>Purpose</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                        <tr>
+                            <td>{{ booking.id }}</td>
+                            <td>{{ booking.hall }}</td>
+                            <td>{{ booking.booking_date }}</td>
+                            <td>{{ booking.slot }}</td>
+                            <td>{{ booking.name }}</td>
+                            <td>{{ booking.purpose }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="empty-cell">No bookings found.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="two-column">
+        <div class="panel" id="cancel-section"></div>
+            <div class="panel-heading">
+                <h2>Cancel Booking</h2>
+                <p>Use your booking ID and phone number to cancel.</p>
+            </div>
+            <form action="{{ url_for('cancel_booking') }}" method="POST" aria-label="Cancel booking form">
+                <div class="field">
+                    <label for="booking_id">Booking ID</label>
+                    <input id="booking_id" type="number" name="booking_id" min="1" inputmode="numeric" required>
+                </div>
+                <div class="field">
+                    <label for="cancel_phone">Phone</label>
+                    <input id="cancel_phone" type="tel" name="phone" inputmode="tel" autocomplete="tel" required>
+                </div>
+                <button class="danger-button" type="submit">Cancel Booking</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <div class="panel-heading">
+                <h2>Hall Details</h2>
+                <p>Pick the right space for your meeting.</p>
+            </div>
+            <div class="hall-list">
+                {% for hall, detail in halls.items() %}
+                    <article class="hall-item">
+                        <h3>{{ hall }}</h3>
+                        <p><strong>{{ detail.capacity }}</strong></p>
+                        <p>{{ detail.features }}</p>
+                    </article>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    const hallInput = document.getElementById("hall");
+    const dateInput = document.getElementById("booking_date");
+    const slotInput = document.getElementById("slot");
+    const slotGrid = document.getElementById("slotGrid");
+    const availabilityHint = document.getElementById("availabilityHint");
+    const allSlots = {{ slots|tojson}};
+
+    function validateForm(){
+        const form = document.forms["bookingForm"];
+        const requiredFields = ["name", "email", "phone", "hall", "booking_date", "slot", "purpose"];
+
+        for(const field of requiredFields){
+            if(form[field].value.trim() === ""){
+                alert("Please fill all booking details");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function renderAvailability(bookedSlots){
+        slotGrid.innerHTML = "";
+
+        allSlots.forEach((slot) => {
+            const pill = document.createElement("span");
+            const booked = bookedSlots.includes(slot);
+            pill.className = booked ? "slot-pill booked" : "slot-pill available";
+            pill.textContent = booked ? `${slot} - Booked` : `${slot} - Available`;
+            slotGrid.appendChild(pill);
+
+            const option = Array.from(slotInput.options).find((item) => item.value === slot);
+            if(option){
+                option.disabled = booked;
+            }
+        });
+    }
+
+    async function loadAvailability(){
+        const hall = hallInput.value;
+        const date = dateInput.value;
+
+        if(!hall || !date){
+            availabilityHint.textContent = "Select hall and date to see slot status.";
+            renderAvailability([]);
+            return;
+        }
+
+        const response = await fetch(`/availability?hall=${encodeURIComponent(hall)}&date=${encodeURIComponent(date)}`);
+        const data = await response.json();
+        availabilityHint.textContent = `${data.available.length} slots available for ${hall}.`;
+        renderAvailability(data.booked);
+    }
+
+    hallInput.addEventListener("change", loadAvailability);
+    dateInput.addEventListener("change", loadAvailability);
+    loadAvailability();
+</script>
+</body>
+</html>
+>>>>>>> a97e4f6f8c48edc056dfab1d320aa01abbad63b9

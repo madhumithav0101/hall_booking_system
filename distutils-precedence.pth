@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 import os; var = 'SETUPTOOLS_USE_DISTUTILS'; enabled = os.environ.get(var, 'local') == 'local'; enabled and __import__('_distutils_hack').add_shim(); 
+=======
+import os; var = 'SETUPTOOLS_USE_DISTUTILS'; enabled = os.environ.get(var, 'local') == 'local'; enabled and __import__('_distutils_hack').add_shim(); 
+>>>>>>> a97e4f6f8c48edc056dfab1d320aa01abbad63b9

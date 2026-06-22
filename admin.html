@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!DOCTYPE html>
 <html>
 <head>
@@ -60,4 +61,68 @@
 </table>
 
 </body>
+=======
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <style>
+        body{
+            font-family: Arial, sans-serif;
+            padding:20px;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        th,td{
+            border:1px solid #ccc;
+            padding:10px;
+            text-align:left;
+        }
+
+        th{
+            background:#28a745;
+            color:white;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Meeting Hall Booking Details</h1>
+
+<p>
+    <a href="/admin/logout">Logout</a>
+</p>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Hall</th>
+        <th>Date</th>
+        <th>Slot</th>
+        <th>Purpose</th>
+    </tr>
+
+    {% for booking in bookings %}
+    <tr>
+        <td>{{ booking.id }}</td>
+        <td>{{ booking.name }}</td>
+        <td>{{ booking.email }}</td>
+        <td>{{ booking.phone }}</td>
+        <td>{{ booking.hall }}</td>
+        <td>{{ booking.booking_date }}</td>
+        <td>{{ booking.slot }}</td>
+        <td>{{ booking.purpose }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+</body>
+>>>>>>> a97e4f6f8c48edc056dfab1d320aa01abbad63b9
 </html>

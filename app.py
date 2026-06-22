@@ -31,24 +31,16 @@ SLOTS = [
     "04:00 PM - 05:00 PM"
 ]
 
-try:
-    db = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="Madhu*@17V",
-        database="meetingdbs2"
-    )
-    cursor = db.cursor()
-
-except Exception as e:
-    print("Database connection failed:", e)
-    db = None
-    cursor = None
+db = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="Madhu*@17V",
+    database="meetingdbs2"
+)
 
 cursor = db.cursor()
 
-if cursor:
-    ensure_booking_columns()
+def ensure_booking_columns():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS bookings (
             id INT AUTO_INCREMENT PRIMARY KEY,
