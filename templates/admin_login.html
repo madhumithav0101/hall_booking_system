@@ -1,29 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Admin Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Admin login for HallBook meeting room management.">
+  <title>Admin Login — HallBook</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<h2>Admin Login</h2>
+<div class="login-shell">
+  <div class="login-card">
 
-<form method="POST">
-    <input type="email"
-           name="email"
-           placeholder="Admin Email"
-           required>
+    <div class="brand" style="margin-bottom:6px;">
+      <span class="brand-eyebrow">Admin Access</span>
+      <span class="brand-name">HallBook</span>
+    </div>
+    <p class="login-sub">Sign in to manage bookings.</p>
 
-    <br><br>
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="messages" role="status" aria-live="polite" style="margin-bottom:20px;">
+          {% for category, message in messages %}
+            <p class="message {{ category }}">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
 
-    <input type="password"
-           name="password"
-           placeholder="Password"
-           required>
+    <form method="POST" aria-label="Admin login form">
+      <div class="field">
+        <label for="email">Admin Email</label>
+        <input id="email" type="email" name="email"
+               placeholder="admin@example.com" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password"
+               placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <button type="submit">🔐 Sign In</button>
+    </form>
 
-    <br><br>
+    <p style="margin-top:20px;text-align:center;font-size:13px;color:var(--text-dim);">
+      <a href="{{ url_for('home') }}"
+         style="color:var(--primary);text-decoration:none;">← Back to booking site</a>
+    </p>
 
-    <button type="submit">Login</button>
-</form>
+  </div>
+</div>
 
 </body>
 </html>

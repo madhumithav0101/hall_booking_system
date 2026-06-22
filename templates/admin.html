@@ -1,63 +1,105 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Admin Dashboard</title>
-    <style>
-        body{
-            font-family: Arial, sans-serif;
-            padding:20px;
-        }
-
-        table{
-            width:100%;
-            border-collapse:collapse;
-        }
-
-        th,td{
-            border:1px solid #ccc;
-            padding:10px;
-            text-align:left;
-        }
-
-        th{
-            background:#28a745;
-            color:white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — HallBook</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<h1>Meeting Hall Booking Details</h1>
+<a class="skip-link" href="#admin-main">Skip to main content</a>
 
-<p>
-    <a href="/admin/logout">Logout</a>
-</p>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-eyebrow">Admin Panel</span>
+    <span class="brand-name">HallBook</span>
+  </div>
+  <a class="nav-link" href="{{ url_for('home') }}">← Back to Site</a>
+</header>
 
-<table>
-    <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th>Hall</th>
-        <th>Date</th>
-        <th>Slot</th>
-        <th>Purpose</th>
-    </tr>
+<main class="page-shell" id="admin-main">
 
-    {% for booking in bookings %}
-    <tr>
-        <td>{{ booking.id }}</td>
-        <td>{{ booking.name }}</td>
-        <td>{{ booking.email }}</td>
-        <td>{{ booking.phone }}</td>
-        <td>{{ booking.hall }}</td>
-        <td>{{ booking.booking_date }}</td>
-        <td>{{ booking.slot }}</td>
-        <td>{{ booking.purpose }}</td>
-    </tr>
-    {% endfor %}
-</table>
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <section class="messages" role="status" aria-live="polite">
+        {% for category, message in messages %}
+          <p class="message {{ category }}">{{ message }}</p>
+        {% endfor %}
+      </section>
+    {% endif %}
+  {% endwith %}
 
+  <div class="admin-header">
+    <div>
+      <h1>⚙ Admin Dashboard</h1>
+      <p style="color:var(--text-muted);font-size:14px;margin-top:4px;">
+        Manage all bookings from one place.
+      </p>
+    </div>
+    <a href="{{ url_for('admin_logout') }}">
+      <button class="logout-btn">🚪 Logout</button>
+    </a>
+  </div>
+
+  <!-- Filter -->
+  <div class="panel" style="margin-bottom:24px;">
+    <div class="split-heading">
+      <div>
+        <h2>📅 All Bookings</h2>
+        <p>Filter by date or hall to narrow results.</p>
+      </div>
+      <form class="filter-form" action="{{ url_for('admin') }}" method="GET"
+            aria-label="Filter bookings">
+        <input type="date" name="date" value="{{ selected_date }}" aria-label="Filter by date">
+        <select name="hall" aria-label="Filter by hall">
+          <option value="">All halls</option>
+          {% for hall in halls %}
+            <option value="{{ hall }}"
+              {% if selected_hall == hall %}selected{% endif %}>{{ hall }}</option>
+          {% endfor %}
+        </select>
+        <button class="secondary-button" type="submit">Filter</button>
+      </form>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <caption>All meeting hall bookings</caption>
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Email</th><th>Phone</th>
+            <th>Hall</th><th>Date</th><th>Slot</th><th>Purpose</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for booking in bookings %}
+            <tr>
+              <td><strong>#{{ booking.id }}</strong></td>
+              <td>{{ booking.name }}</td>
+              <td>{{ booking.email }}</td>
+              <td>{{ booking.phone }}</td>
+              <td>{{ booking.hall }}</td>
+              <td>{{ booking.booking_date }}</td>
+              <td>{{ booking.slot }}</td>
+              <td>{{ booking.purpose }}</td>
+              <td>
+                <form action="{{ url_for('admin_delete', booking_id=booking.id) }}"
+                      method="POST"
+                      onsubmit="return confirm('Delete booking #{{ booking.id }}?')">
+                  <button class="danger-button table-action" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="9" class="empty-cell">No bookings found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
 </body>
 </html>
