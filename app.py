@@ -1,8 +1,12 @@
-from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
-import mysql.connector
+import os
+import sqlite3
+from flask import Flask, flash, g, jsonify, redirect, render_template, request, session, url_for
 
 app = Flask(__name__)
-app.secret_key = "meeting-booking-secret"
+app.secret_key = os.environ.get("SECRET_KEY", "meeting-booking-secret-2024")
+
+# On Vercel the only writable directory is /tmp
+DB_PATH = os.path.join("/tmp", "bookings.db")
 
 ADMIN_EMAIL = "admin123@gmail.com"
 ADMIN_PASSWORD = "123"
@@ -31,92 +35,76 @@ SLOTS = [
     "04:00 PM - 05:00 PM"
 ]
 
-db = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="Madhu*@17V",
-    database="meetingdbs2"
-)
 
-cursor = db.cursor()
+def get_db():
+    """Open a new DB connection for the current request context."""
+    if "db" not in g:
+        g.db = sqlite3.connect(DB_PATH)
+        g.db.row_factory = sqlite3.Row
+    return g.db
 
-def ensure_booking_columns():
-    cursor.execute("""
+
+@app.teardown_appcontext
+def close_db(error=None):
+    """Close DB connection at end of request."""
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+
+
+def init_db():
+    """Create the bookings table if it does not exist."""
+    db = get_db()
+    db.execute("""
         CREATE TABLE IF NOT EXISTS bookings (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            hall VARCHAR(50) NOT NULL,
-            booking_date DATE NOT NULL,
-            slot VARCHAR(50) NOT NULL,
-            name VARCHAR(100) NOT NULL DEFAULT '',
-            email VARCHAR(120) NOT NULL DEFAULT '',
-            phone VARCHAR(20) NOT NULL DEFAULT '',
-            purpose VARCHAR(255) NOT NULL DEFAULT ''
+            id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            hall    TEXT NOT NULL,
+            booking_date TEXT NOT NULL,
+            slot    TEXT NOT NULL,
+            name    TEXT NOT NULL DEFAULT '',
+            email   TEXT NOT NULL DEFAULT '',
+            phone   TEXT NOT NULL DEFAULT '',
+            purpose TEXT NOT NULL DEFAULT ''
         )
     """)
-
-    required_columns = {
-        "id": "INT AUTO_INCREMENT PRIMARY KEY FIRST",
-        "name": "VARCHAR(100) NOT NULL DEFAULT ''",
-        "email": "VARCHAR(120) NOT NULL DEFAULT ''",
-        "phone": "VARCHAR(20) NOT NULL DEFAULT ''",
-        "purpose": "VARCHAR(255) NOT NULL DEFAULT ''"
-    }
-
-    cursor.execute("""
-        SELECT COLUMN_NAME
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-        AND TABLE_NAME = 'bookings'
-    """)
-    existing_columns = {row[0] for row in cursor.fetchall()}
-
-    for column, definition in required_columns.items():
-        if column not in existing_columns:
-            cursor.execute(f"ALTER TABLE bookings ADD COLUMN {column} {definition}")
-
     db.commit()
 
-def get_bookings(booking_date=None, hall=None):
-    query = "SELECT id, hall, booking_date, slot, name, email, phone, purpose FROM bookings"
-    conditions = []
-    params = []
 
-    if booking_date:
-        conditions.append("booking_date=%s")
-        params.append(booking_date)
+@app.before_request
+def ensure_db():
+    """Initialise DB schema before every request."""
+    init_db()
 
-    if hall:
-        conditions.append("hall=%s")
-        params.append(hall)
 
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
-
-    query += " ORDER BY booking_date DESC, hall ASC, slot ASC"
-    cursor.execute(query, tuple(params))
-
-    bookings = []
-    for row in cursor.fetchall():
-        bookings.append({
-            "id": row[0],
-            "hall": row[1],
-            "booking_date": row[2],
-            "slot": row[3],
-            "name": row[4],
-            "email": row[5],
-            "phone": row[6],
-            "purpose": row[7]
-        })
-
-    return bookings
-
-ensure_booking_columns()
+# ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def home():
     selected_date = request.args.get('date', '')
     selected_hall = request.args.get('hall', '')
-    bookings = get_bookings(selected_date or None, selected_hall or None)
+
+    db = get_db()
+    query = """
+        SELECT id, hall, booking_date, slot, name, email, phone, purpose
+        FROM bookings
+    """
+    conditions = []
+    params = []
+
+    if selected_date:
+        conditions.append("booking_date = ?")
+        params.append(selected_date)
+    if selected_hall:
+        conditions.append("hall = ?")
+        params.append(selected_hall)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " ORDER BY booking_date DESC, hall ASC, slot ASC"
+    rows = db.execute(query, params).fetchall()
+
+    bookings = [dict(row) for row in rows]
 
     return render_template(
         'index.html',
@@ -127,80 +115,89 @@ def home():
         selected_hall=selected_hall
     )
 
+
 @app.route('/booking')
 def booking_page():
     return redirect(url_for('home'))
+
 
 @app.route('/availability-page')
 def availability_page():
     return redirect(url_for('home'))
 
+
 @app.route('/booked-slots')
 def booked_slots():
     return redirect(url_for('home'))
 
+
 @app.route('/cancel-page')
 def cancel_page():
     return redirect(url_for('home'))
+
+
 @app.route('/book', methods=['POST'])
 def book():
-    hall = request.form['hall']
+    hall         = request.form['hall']
     booking_date = request.form['booking_date']
-    slot = request.form['slot']
-    name = request.form['name'].strip()
-    email = request.form['email'].strip()
-    phone = request.form['phone'].strip()
-    purpose = request.form['purpose'].strip()
+    slot         = request.form['slot']
+    name         = request.form['name'].strip()
+    email        = request.form['email'].strip()
+    phone        = request.form['phone'].strip()
+    purpose      = request.form['purpose'].strip()
 
-    cursor.execute(
-        "SELECT * FROM bookings WHERE hall=%s AND booking_date=%s AND slot=%s",
+    db = get_db()
+
+    existing = db.execute(
+        "SELECT id FROM bookings WHERE hall=? AND booking_date=? AND slot=?",
         (hall, booking_date, slot)
-    )
-
-    existing = cursor.fetchone()
+    ).fetchone()
 
     if existing:
         flash("Already booked. Please select another slot.", "error")
         return redirect(url_for('home'))
 
-    cursor.execute(
+    cursor = db.execute(
         """
-        INSERT INTO bookings(hall, booking_date, slot, name, email, phone, purpose)
-        VALUES(%s,%s,%s,%s,%s,%s,%s)
+        INSERT INTO bookings (hall, booking_date, slot, name, email, phone, purpose)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (hall, booking_date, slot, name, email, phone, purpose)
     )
-    
-
     db.commit()
 
     flash(f"Booking successful. Your booking ID is {cursor.lastrowid}.", "success")
     return redirect(url_for('home', date=booking_date, hall=hall))
 
+
 @app.route('/availability')
 def availability():
     booking_date = request.args.get('date')
-    hall = request.args.get('hall')
+    hall         = request.args.get('hall')
 
     if not booking_date or not hall:
         return jsonify({"booked": [], "available": SLOTS})
 
-    cursor.execute(
-        "SELECT slot FROM bookings WHERE hall=%s AND booking_date=%s",
+    db = get_db()
+    rows = db.execute(
+        "SELECT slot FROM bookings WHERE hall=? AND booking_date=?",
         (hall, booking_date)
-    )
-    booked = [row[0] for row in cursor.fetchall()]
-    available = [slot for slot in SLOTS if slot not in booked]
+    ).fetchall()
+
+    booked    = [row["slot"] for row in rows]
+    available = [s for s in SLOTS if s not in booked]
 
     return jsonify({"booked": booked, "available": available})
+
 
 @app.route('/cancel', methods=['POST'])
 def cancel_booking():
     booking_id = request.form['booking_id']
-    phone = request.form['phone'].strip()
+    phone      = request.form['phone'].strip()
 
-    cursor.execute(
-        "DELETE FROM bookings WHERE id=%s AND phone=%s",
+    db = get_db()
+    cursor = db.execute(
+        "DELETE FROM bookings WHERE id=? AND phone=?",
         (booking_id, phone)
     )
     db.commit()
@@ -212,6 +209,7 @@ def cancel_booking():
 
     return redirect(url_for('home'))
 
+
 @app.route('/admin')
 def admin():
     if not session.get('admin_logged_in'):
@@ -219,7 +217,28 @@ def admin():
 
     selected_date = request.args.get('date', '')
     selected_hall = request.args.get('hall', '')
-    bookings = get_bookings(selected_date or None, selected_hall or None)
+
+    db = get_db()
+    query = """
+        SELECT id, hall, booking_date, slot, name, email, phone, purpose
+        FROM bookings
+    """
+    conditions = []
+    params = []
+
+    if selected_date:
+        conditions.append("booking_date = ?")
+        params.append(selected_date)
+    if selected_hall:
+        conditions.append("hall = ?")
+        params.append(selected_hall)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    query += " ORDER BY booking_date DESC, hall ASC, slot ASC"
+    rows = db.execute(query, params).fetchall()
+    bookings = [dict(row) for row in rows]
 
     return render_template(
         'admin.html',
@@ -229,10 +248,11 @@ def admin():
         selected_hall=selected_hall
     )
 
+
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
-        email = request.form['email'].strip()
+        email    = request.form['email'].strip()
         password = request.form['password'].strip()
 
         if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
@@ -244,21 +264,25 @@ def admin_login():
 
     return render_template('admin_login.html')
 
+
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin_logged_in', None)
     flash("Admin logged out.", "success")
     return redirect(url_for('home'))
 
+
 @app.route('/admin/delete/<int:booking_id>', methods=['POST'])
 def admin_delete(booking_id):
     if not session.get('admin_logged_in'):
         return redirect(url_for('admin_login'))
 
-    cursor.execute("DELETE FROM bookings WHERE id=%s", (booking_id,))
+    db = get_db()
+    db.execute("DELETE FROM bookings WHERE id=?", (booking_id,))
     db.commit()
     flash("Booking deleted from admin panel.", "success")
     return redirect(url_for('admin'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
